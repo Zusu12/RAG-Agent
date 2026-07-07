@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Agent — Intelligent Q&A</title>
+    <meta name="description" content="An AI-powered question-answering system with document retrieval and generation.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Libre+Franklin:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-parchment: #F4F0E6;
+            --bg-cardboard: #E6DFC7;
+            --bg-cardboard-light: #ECE6D5;
+            --text-ink: #1F2421;
+            --text-muted: #5E635F;
+            --border-steel: #4B5340;
+            --border-steel-light: #8A9280;
+            --accent-stamp: #A93E33;
+            --warning-graphite: #8A8A7A;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Libre Franklin', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-parchment);
+            color: var(--text-ink);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ---- Layout ---- */
+        .app-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* ---- Document Ledger (Left Column) ---- */
+        .sidebar {
+            background: var(--bg-cardboard);
+            border-right: 1.5px solid var(--border-steel);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1.5px solid var(--border-steel);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .logo-icon {
+            font-size: 1.5rem;
+        }
+
+        .logo-text {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--text-ink);
+            text-transform: uppercase;
+        }
+
+        .backend-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: var(--bg-parchment);
+            border: 1px solid var(--border-steel);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-ink);
+            text-transform: uppercase;
+            margin-top: 12px;
+        }
+
+        .backend-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-stamp);
+        }
+
+        /* -- Upload zone -- */
+        .upload-section {
+            padding: 16px 20px;
+            border-bottom: 1.5px solid var(--border-steel);
+        }
+
+        .upload-zone {
+            border: 1.5px dashed var(--border-steel);
+            background: var(--bg-cardboard-light);
+            padding: 20px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-stamp);
+            background: var(--bg-parchment);
+        }
+
+        .upload-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        .upload-text {
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 0.8rem;
+            color: var(--text-ink);
+            line-height: 1.5;
+        }
+
+        .upload-text strong {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-ink);
+        }
+
+        .upload-formats {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .upload-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: var(--accent-stamp);
+            transition: width 0.3s ease;
+            width: 0;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* -- Documents list -- */
+        .documents-section {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .section-title {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-ink);
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border-steel-light);
+            padding-bottom: 4px;
+        }
+
+        .doc-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .doc-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: var(--bg-parchment);
+            border: 1px solid var(--border-steel-light);
+            transition: border-color 0.2s ease;
+        }
+
+        .doc-item:hover {
+            border-color: var(--border-steel);
+            background: var(--bg-cardboard-light);
+        }
+
+        .doc-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .doc-icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .doc-details {
+            min-width: 0;
+        }
+
+        .doc-name {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-ink);
+        }
+
+        .doc-chunks {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        .doc-delete {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            transition: color 0.2s;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .doc-delete:hover {
+            color: var(--accent-stamp);
+        }
+
+        .empty-docs {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            font-style: italic;
+        }
+
+        /* -- Sidebar footer -- */
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1.5px solid var(--border-steel);
+            background: var(--bg-cardboard);
+        }
+
+        .stats-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            background: var(--bg-parchment);
+            border: 1px solid var(--border-steel-light);
+        }
+
+        .stat-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-ink);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* ---- Main Research Area ---- */
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--bg-parchment);
+        }
+
+        .chat-header {
+            padding: 20px 32px;
+            border-bottom: 1.5px solid var(--border-steel);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-parchment);
+        }
+
+        .chat-title {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--text-ink);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            padding: 6px 12px;
+            background: none;
+            border: 1px solid var(--border-steel);
+            color: var(--text-ink);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-family: 'IBM Plex Mono', monospace;
+            text-transform: uppercase;
+            transition: background 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-cardboard);
+        }
+
+        /* -- Chat messages / Dossier -- */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            scroll-behavior: smooth;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--border-steel-light);
+        }
+
+        .message-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            animation: slideIn 0.25s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-group.user {
+            border-left: 3px solid var(--border-steel);
+            padding-left: 16px;
+        }
+
+        .message-group.assistant {
+            border-left: 3px solid var(--accent-stamp);
+            padding-left: 16px;
+        }
+
+        .message-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .message-group.assistant .message-label {
+            color: var(--accent-stamp);
+        }
+
+        .message-bubble {
+            line-height: 1.7;
+            white-space: pre-wrap;
+            color: var(--text-ink);
+        }
+
+        .message-group.user .message-bubble {
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+
+        .message-group.assistant .message-bubble {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 1.15rem;
+        }
+
+        /* Code formatting in Assistant answer */
+        .message-bubble code {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            background: var(--bg-cardboard-light);
+            padding: 2px 4px;
+            border: 1px solid var(--border-steel-light);
+        }
+
+        .message-bubble pre {
+            background: var(--bg-cardboard-light);
+            border: 1px solid var(--border-steel);
+            padding: 12px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .message-bubble pre code {
+            background: none;
+            padding: 0;
+            border: none;
+        }
+
+        /* -- Sources / Evidence Index Cards -- */
+        .sources-header {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-top: 16px;
+            border-top: 1px dashed var(--border-steel-light);
+            padding-top: 8px;
+            text-transform: uppercase;
+        }
+
+        .sources-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 8px;
+        }
+
+        .source-chip {
+            background: var(--bg-cardboard-light);
+            border: 1.5px solid var(--border-steel);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        /* Card Relevance States */
+        .source-chip.high-relevance {
+            border-color: var(--accent-stamp);
+        }
+
+        .source-chip.low-confidence {
+            border-color: var(--warning-graphite);
+            border-style: dashed;
+            opacity: 0.85;
+        }
+
+        .source-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-steel-light);
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+
+        .source-doc-name {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 140px;
+        }
+
+        .source-stamp {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 1px 5px;
+            text-transform: uppercase;
+        }
+
+        .source-chip.high-relevance .source-stamp {
+            color: var(--accent-stamp);
+            border: 1px solid var(--accent-stamp);
+        }
+
+        .source-chip.low-confidence .source-stamp {
+            color: var(--warning-graphite);
+            border: 1px solid var(--warning-graphite);
+        }
+
+        .source-chip.mid-relevance .source-stamp {
+            color: var(--text-muted);
+            border: 1px solid var(--border-steel-light);
+        }
+
+        .source-body-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1.5;
+            color: var(--text-ink);
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+            flex-grow: 1;
+        }
+
+        .source-score-badge {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-align: right;
+            border-top: 1px dashed var(--border-steel-light);
+            padding-top: 4px;
+        }
+
+        /* -- Typing / Working indicator -- */
+        .typing-indicator {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--accent-stamp);
+            padding: 12px 16px;
+            border: 1.5px dashed var(--accent-stamp);
+            background: var(--bg-cardboard-light);
+            display: inline-block;
+            align-self: flex-start;
+            margin-bottom: 12px;
+            animation: pulse-border 1.5s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { border-color: var(--border-steel); }
+            50% { border-color: var(--accent-stamp); }
+            100% { border-color: var(--border-steel); }
+        }
+
+        /* -- Empty state -- */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 16px;
+            padding: 40px;
+        }
+
+        .empty-icon {
+            font-size: 2.5rem;
+            color: var(--text-muted);
+        }
+
+        .empty-title {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-ink);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .empty-desc {
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            max-width: 440px;
+            line-height: 1.6;
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .suggestion-chip {
+            background: none;
+            border: 1px solid var(--border-steel);
+            color: var(--text-ink);
+            padding: 8px 14px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .suggestion-chip:hover {
+            background: var(--bg-cardboard);
+        }
+
+        /* -- Input area -- */
+        .input-area {
+            padding: 24px 32px;
+            border-top: 1.5px solid var(--border-steel);
+            background: var(--bg-parchment);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--bg-parchment);
+            border: 1.5px solid var(--border-steel);
+            color: var(--text-ink);
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .input-field::placeholder {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent-stamp);
+        }
+
+        .send-btn {
+            background: var(--text-ink);
+            color: var(--bg-parchment);
+            border: 1.5px solid var(--border-steel);
+            padding: 12px 24px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: background 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: var(--accent-stamp);
+            color: white;
+            border-color: var(--accent-stamp);
+        }
+
+        .send-btn:disabled {
+            background: var(--bg-cardboard);
+            color: var(--text-muted);
+            border-color: var(--border-steel-light);
+            cursor: not-allowed;
+        }
+
+        /* -- Toast notifications -- */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 12px 18px;
+            background: var(--bg-cardboard);
+            border: 1.5px solid var(--border-steel);
+            color: var(--text-ink);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            box-shadow: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: toastIn 0.25s ease;
+        }
+
+        .toast.success {
+            border-left: 5px solid var(--accent-stamp);
+        }
+
+        .toast.error {
+            border-left: 5px solid var(--accent-stamp);
+            color: var(--accent-stamp);
+        }
+
+        .toast.info {
+            border-left: 5px solid var(--border-steel);
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ---- Responsive ---- */
+        @media (max-width: 768px) {
+            .app-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .chat-messages {
+                padding: 20px;
+            }
+
+            .input-area {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- Document Accession Ledger -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">🗄️</div>
+                    <span class="logo-text">RAG Agent</span>
+                </div>
+                <div class="backend-badge" id="backend-badge">
+                    <span class="dot"></span>
+                    <span id="backend-text">Loading Ledger...</span>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="upload-section">
+                <div class="upload-zone" id="upload-zone">
+                    <div class="upload-icon">📥</div>
+                    <div class="upload-text">
+                        <strong>Intake Document</strong><br>
+                        click or drop files
+                    </div>
+                    <div class="upload-formats">PDF • TXT • DOCX • MD</div>
+                    <div class="upload-progress" id="upload-progress"></div>
+                </div>
+                <input type="file" id="file-input" accept=".txt,.md,.pdf,.docx">
+            </div>
+
+            <!-- Documents -->
+            <div class="documents-section">
+                <div class="section-title">Accession Ledger</div>
+                <div class="doc-list" id="doc-list">
+                    <div class="empty-docs">Ledger is empty</div>
+                </div>
+            </div>
+
+            <!-- Stats Footer -->
+            <div class="sidebar-footer">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Indexed Chunks</span>
+                        <span class="stat-value" id="stat-chunks">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Ingested Files</span>
+                        <span class="stat-value" id="stat-docs">0</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Research Workspace -->
+        <main class="main">
+            <div class="chat-header">
+                <div class="chat-title">Research Dossier</div>
+                <div class="header-actions">
+                    <button class="btn-icon" id="btn-clear" title="Reset dossier">
+                        [ Reset Dossier ]
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chat-messages">
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-icon">📂</div>
+                    <div class="empty-title">ledger active & ready</div>
+                    <div class="empty-desc">
+                        Deposit reference texts into the Accession Ledger on the left.
+                        Type a query below to retrieve evidence index cards and compile a synthesized brief.
+                    </div>
+                    <div class="suggestions" id="suggestions">
+                        <button class="suggestion-chip" data-q="What documents have been uploaded?">LIST ACQUIRED ARCHIVES</button>
+                        <button class="suggestion-chip" data-q="Summarize the knowledge base">SUMMARIZE INDEX LEDGER</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <input type="text" class="input-field" id="question-input"
+                        placeholder="Query indexed snippets..." autocomplete="off">
+                    <button class="send-btn" id="send-btn" title="Submit query">
+                        Query
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        (() => {
+            // ---- DOM refs ----
+            const chatMessages = document.getElementById('chat-messages');
+            const questionInput = document.getElementById('question-input');
+            const sendBtn = document.getElementById('send-btn');
+            const emptyState = document.getElementById('empty-state');
+            const uploadZone = document.getElementById('upload-zone');
+            const fileInput = document.getElementById('file-input');
+            const uploadProgress = document.getElementById('upload-progress');
+            const docList = document.getElementById('doc-list');
+            const statChunks = document.getElementById('stat-chunks');
+            const statDocs = document.getElementById('stat-docs');
+            const backendText = document.getElementById('backend-text');
+            const btnClear = document.getElementById('btn-clear');
+            const toastContainer = document.getElementById('toast-container');
+
+            let isProcessing = false;
+
+            // ---- Toast ----
+            function showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+                toastContainer.appendChild(toast);
+                setTimeout(() => toast.remove(), 3500);
+            }
+
+            // ---- Stats & Documents ----
+            async function refreshStats() {
+                try {
+                    const res = await fetch('/stats');
+                    const data = await res.json();
+                    statChunks.textContent = data.total_chunks || 0;
+                    statDocs.textContent = data.total_documents || 0;
+
+                    const backendMap = {
+                        'huggingface_api': `HF API · ${data.model || 'Unknown'}`,
+                        'local_flan_t5': 'Local · flan-t5-base',
+                        'none': 'No backend',
+                    };
+                    backendText.textContent = backendMap[data.backend] || data.backend;
+                } catch (e) {
+                    console.error('Failed to fetch stats:', e);
+                }
+            }
+
+            async function refreshDocuments() {
+                try {
+                    const res = await fetch('/documents');
+                    const data = await res.json();
+
+                    if (!data.documents || data.documents.length === 0) {
+                        docList.innerHTML = '<div class="empty-docs">No documents uploaded yet</div>';
+                        return;
+                    }
+
+                    const extIcons = { pdf: '📕', txt: '📄', md: '📝', docx: '📘' };
+                    docList.innerHTML = data.documents.map(doc => {
+                        const ext = doc.name.split('.').pop().toLowerCase();
+                        const icon = extIcons[ext] || '📄';
+                        return `
+                        <div class="doc-item" data-name="${doc.name}">
+                            <div class="doc-info">
+                                <span class="doc-icon">${icon}</span>
+                                <div class="doc-details">
+                                    <div class="doc-name" title="${doc.name}">${doc.name}</div>
+                                    <div class="doc-chunks">${doc.chunks} chunks</div>
+                                </div>
+                            </div>
+                            <button class="doc-delete" title="Remove document" data-name="${doc.name}">✕</button>
+                        </div>
+                    `;
+                    }).join('');
+
+                    // Delete handlers
+                    docList.querySelectorAll('.doc-delete').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const name = btn.dataset.name;
+                            if (!confirm(`Remove "${name}" from the knowledge base?`)) return;
+                            try {
+                                const res = await fetch(`/documents/${encodeURIComponent(name)}`, { method: 'DELETE' });
+                                const data = await res.json();
+                                showToast(`Removed ${name} (${data.chunks_deleted} chunks)`, 'success');
+                                refreshDocuments();
+                                refreshStats();
+                            } catch (e) {
+                                showToast('Failed to delete document', 'error');
+                            }
+                        });
+                    });
+                } catch (e) {
+                    console.error('Failed to fetch documents:', e);
+                }
+            }
+
+            // ---- File Upload ----
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('drag-over');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('drag-over');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) uploadFile(files[0]);
+            });
+
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    uploadFile(fileInput.files[0]);
+                    fileInput.value = '';
+                }
+            });
+
+            async function uploadFile(file) {
+                const allowed = ['.txt', '.md', '.pdf', '.docx'];
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+                if (!allowed.includes(ext)) {
+                    showToast(`Unsupported format: ${ext}`, 'error');
+                    return;
+                }
+
+                uploadProgress.style.width = '30%';
+                showToast(`Uploading ${file.name}...`, 'info');
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    uploadProgress.style.width = '60%';
+                    const res = await fetch('/upload', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    uploadProgress.style.width = '100%';
+
+                    if (res.ok) {
+                        showToast(`✓ ${file.name} — ${data.chunks_added} chunks added`, 'success');
+                        refreshDocuments();
+                        refreshStats();
+                    } else {
+                        showToast(data.error || 'Upload failed', 'error');
+                    }
+                } catch (e) {
+                    showToast('Upload failed: ' + e.message, 'error');
+                } finally {
+                    setTimeout(() => { uploadProgress.style.width = '0'; }, 1000);
+                }
+            }
+
+            // ---- Chat ----
+            function hideEmptyState() {
+                if (emptyState) emptyState.style.display = 'none';
+            }
+
+            function addMessage(content, role, sources = null) {
+                hideEmptyState();
+                const group = document.createElement('div');
+                group.className = `message-group ${role}`;
+
+                const label = role === 'user' ? 'QUERY // INDEX SEARCH' : 'SYNTHESIZED BRIEF';
+                let html = `
+                <div class="message-label">${label}</div>
+                <div class="message-bubble">${escapeHtml(content)}</div>
+            `;
+
+                if (sources && sources.length > 0 && role === 'assistant') {
+                    html += '<div class="sources-header">Exhibit Chunks (Retrieved Context)</div>';
+                    html += '<div class="sources-container">';
+                    for (const src of sources) {
+                        let relevanceClass = 'mid-relevance';
+                        let stampText = 'INDEX SNIPPET';
+                        const scoreVal = parseFloat(src.score);
+                        if (!isNaN(scoreVal)) {
+                            if (scoreVal >= 0.4) {
+                                relevanceClass = 'high-relevance';
+                                stampText = '✓ HIGH CONFIDENCE';
+                            } else if (scoreVal < 0.15) {
+                                relevanceClass = 'low-confidence';
+                                stampText = '⚠ RETRIEVAL WARNING';
+                            }
+                        }
+                        
+                        html += `
+                        <div class="source-chip ${relevanceClass}">
+                            <div class="source-meta-row">
+                                <span class="source-doc-name" title="${escapeHtml(src.source)}">${escapeHtml(src.source)}</span>
+                                <span class="source-stamp">${stampText}</span>
+                            </div>
+                            <div class="source-body-text">${escapeHtml(src.text)}</div>
+                            <div class="source-score-badge">RELEVANCE: ${src.score}</div>
+                        </div>
+                    `;
+                    }
+                    html += '</div>';
+                }
+
+                group.innerHTML = html;
+                chatMessages.appendChild(group);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            function showTyping() {
+                hideEmptyState();
+                const el = document.createElement('div');
+                el.className = 'typing-indicator';
+                el.id = 'typing';
+                el.innerHTML = '<span class="typing-text">[ RETRIEVING ARCHIVES & SYNTHESIZING BRIEF... ]</span>';
+                chatMessages.appendChild(el);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            function hideTyping() {
+                const el = document.getElementById('typing');
+                if (el) el.remove();
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            async function sendQuestion() {
+                const question = questionInput.value.trim();
+                if (!question || isProcessing) return;
+
+                isProcessing = true;
+                questionInput.disabled = true;
+                sendBtn.disabled = true;
+
+                addMessage(question, 'user');
+                questionInput.value = '';
+                showTyping();
+
+                try {
+                    const res = await fetch('/ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question }),
+                    });
+
+                    hideTyping();
+
+                    const contentType = res.headers.get('content-type');
+                    let data;
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await res.json();
+                    } else {
+                        const text = await res.text();
+                        data = { error: `Server returned non-JSON response (${res.status}): ${text.substring(0, 100)}` };
+                    }
+
+                    if (res.ok && !data.error) {
+                        addMessage(data.answer, 'assistant', data.sources);
+                    } else {
+                        addMessage(data.error || 'Something went wrong.', 'assistant');
+                    }
+                } catch (e) {
+                    hideTyping();
+                    addMessage('Connection error: ' + e.message, 'assistant');
+                } finally {
+                    isProcessing = false;
+                    questionInput.disabled = false;
+                    sendBtn.disabled = false;
+                    questionInput.focus();
+                }
+            }
+
+            // ---- Event Listeners ----
+            sendBtn.addEventListener('click', sendQuestion);
+
+            questionInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendQuestion();
+                }
+            });
+
+            // Suggestion chips
+            document.querySelectorAll('.suggestion-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    questionInput.value = chip.dataset.q;
+                    sendQuestion();
+                });
+            });
+
+            // Clear conversation
+            btnClear.addEventListener('click', async () => {
+                try {
+                    await fetch('/clear', { method: 'POST' });
+                    chatMessages.innerHTML = '';
+                    if (emptyState) {
+                        chatMessages.appendChild(emptyState);
+                        emptyState.style.display = '';
+                    }
+                    showToast('Conversation cleared', 'success');
+                } catch (e) {
+                    showToast('Failed to clear conversation', 'error');
+                }
+            });
+
+            // ---- Init ----
+            questionInput.focus();
+            refreshStats();
+            refreshDocuments();
+        })();
+    </script>
+</body>
+
+</html>

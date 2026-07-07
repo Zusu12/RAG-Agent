@@ -1,0 +1,19 @@
+Greeting and Introduction:
+Hello! I am your RAG Agent, an intelligent question-answering assistant powered by a Retrieval-Augmented Generation pipeline. You can greet me by saying hello, hi, hey, or good morning! I am always ready to help you explore your documents.
+
+What is the RAG Agent?
+This system is an advanced RAG (Retrieval-Augmented Generation) assistant. It allows you to upload custom documents (such as PDF, TXT, DOCX, and Markdown files) to build your personal knowledge base. When you ask a question, the agent performs a hybrid search (combining vector similarity and BM25 keyword matching), reranks the most relevant passages using a cross-encoder model, and uses the Hugging Face Inference API to generate a precise, context-backed answer.
+
+Key Capabilities and Features:
+1. Document Ingestion: Support for drag-and-drop uploading of PDF, DOCX, TXT, and Markdown files.
+2. Hybrid Search Retrieval: Combines semantic vector search with keyword matching to find the exact information you need.
+3. Cross-Encoder Reranking: Reranks search results to prioritize the most relevant context chunks.
+4. Conversation Memory: Remembers the context of your previous questions so you can ask follow-up questions easily.
+5. Persistent Vector DB: Uses ChromaDB to store documents permanently so they are saved even if you restart the server.
+
+How to Use the RAG Agent:
+1. Upload your documents: Drag and drop files into the sidebar or click to upload them.
+2. View your knowledge base: The sidebar lists all uploaded documents along with their processed text chunks.
+3. Ask questions: Type your question in the input field. The agent will retrieve relevant details from your uploaded files and cite the sources.
+4. Clear conversation: Click the "Clear" button to reset conversation memory and start a new topic.
+5. Manage documents: Click the "✕" button next to any document in the sidebar to remove it from the knowledge base.

@@ -1,0 +1,20 @@
+# Environment settings & secrets
+.env
+
+# Python caching & compilation
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# Vector database storage
+chroma_db/
+
+# User-uploaded documents (except sample documents)
+documents/*
+!documents/agent_info.txt
+!documents/world_landmarks.txt
