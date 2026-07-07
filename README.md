@@ -141,5 +141,9 @@ Adjust these variables inside your `.env` file to customize pipeline behaviors:
 | `CHROMA_DIR` | `./chroma_db` | Storage path on disk for ChromaDB. |
 
 ---
+## 📄 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
 
 
