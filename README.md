@@ -142,6 +142,4 @@ Adjust these variables inside your `.env` file to customize pipeline behaviors:
 
 ---
 
-## 🔒 License
 
-This project is licensed under the MIT License - see the LICENSE details for more information.
