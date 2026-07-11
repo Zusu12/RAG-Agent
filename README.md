@@ -20,7 +20,7 @@ This repository is self-contained, clean, and ready for deployment or GitHub dis
 - 🏆 **Cross-Encoder Reranking** — Employs `ms-marco-MiniLM-L-6-v2` as a second-stage ranker to ensure only the most relevant document chunks populate the LLM context window.
 - 💬 **Stateful Conversation Memory** — Automatically maintains dialogue state across multi-turn queries.
 - 💾 **Persistent Vector Indexing** — Disk-backed storage using ChromaDB that persists database state across server restarts.
-- 🌙 **Premium Web UI** — Sleek responsive frontend with drag-and-drop file uploading, ingestion statistics, and source citations.
+- 🌙 **Premium Web UI** — Sleek responsive frontend with drag-and-drop file uploading,ingestion statistics, and source citations.
 
 ---
 
