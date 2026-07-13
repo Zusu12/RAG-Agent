@@ -1,22 +1,27 @@
 """
-RAGAgent Flask Server — Enhanced Web API
+RAGAgent Flask Server — Enhanced Web API (Multi-User Hosted Mode)
 
 Endpoints:
-  GET  /            — Serve the web UI
-  POST /ask         — Query the RAG pipeline
-  POST /upload      — Upload and ingest a document
-  GET  /documents   — List ingested documents
+  GET  /              — Serve the web UI (includes setup overlay)
+  POST /api/setup     — Validate & store HF token in session
+  GET  /api/session-status — Check if current session has a valid token
+  POST /api/logout    — Clear session token
+  POST /ask           — Query the RAG pipeline (requires session token)
+  POST /upload        — Upload and ingest a document
+  GET  /documents     — List ingested documents
   DELETE /documents/<name> — Remove a document
-  POST /clear       — Clear conversation memory
-  GET  /stats       — Collection statistics
-  GET  /health      — Health check
+  POST /clear         — Clear conversation memory
+  GET  /stats         — Collection statistics
+  GET  /health        — Health check
 """
 
 import os
+import secrets
 import logging
 from pathlib import Path
+from functools import wraps
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 from werkzeug.utils import secure_filename
 from rag_module import RAGAgent
 
@@ -29,23 +34,40 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE
+app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", secrets.token_hex(32))
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Initialise RAG Agent
+# Initialise shared RAG Agent (embedding + reranker + ChromaDB — no LLM)
+# The LLM backend is injected per-request via the user's session token.
 # ---------------------------------------------------------------------------
 print("=" * 50)
-print("  Initializing RAG Agent...")
+print("  Initializing RAG Agent (shared core)...")
 print("=" * 50)
-rag_agent = RAGAgent()
+rag_agent = RAGAgent()  # Will init without HF_TOKEN if not in .env — that's fine
 stats = rag_agent.get_stats()
-print(f"  Backend : {stats['backend']}")
+print(f"  Backend : {stats['backend']} (per-user tokens used at runtime)")
 print(f"  Model   : {stats['model']}")
 print(f"  Chunks  : {stats['total_chunks']}")
 print("=" * 50)
 print("  RAG Agent ready!")
 print("=" * 50)
+
+
+# ---------------------------------------------------------------------------
+# Auth guard decorator
+# ---------------------------------------------------------------------------
+def require_token(f):
+    """Decorator that ensures a valid HF token is stored in the session."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("hf_token"):
+            return jsonify({"error": "No API token configured. Please set up your HuggingFace token first."}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 
 # ---------------------------------------------------------------------------
@@ -56,17 +78,84 @@ def _allowed_file(filename: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Routes
+# Setup / Auth Routes
 # ---------------------------------------------------------------------------
 @app.route("/")
 def index():
-    """Serve the main web UI."""
+    """Serve the main web UI (includes setup overlay if no token)."""
     return render_template("index.html")
 
 
+@app.route("/api/session-status", methods=["GET"])
+def session_status():
+    """Check if the current session has a valid HF token."""
+    has_token = bool(session.get("hf_token"))
+    return jsonify({
+        "authenticated": has_token,
+        "model": session.get("hf_model", rag_agent.model_name) if has_token else None,
+    })
+
+
+@app.route("/api/setup", methods=["POST"])
+def setup_token():
+    """Validate & store the HF token in the session.
+
+    Request:  { "token": "hf_..." }
+    Response: { "status": "ok", "model": "..." } or { "error": "..." }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data or not data.get("token", "").strip():
+            return jsonify({"error": "Please provide a HuggingFace API token."}), 400
+
+        token = data["token"].strip()
+
+        # Validate the token with a lightweight test call
+        try:
+            from huggingface_hub import InferenceClient
+            model = data.get("model", rag_agent.model_name)
+            client = InferenceClient(model=model, token=token)
+            # Make a minimal test call to verify the token works
+            client.chat_completion(
+                messages=[{"role": "user", "content": "Hi"}],
+                max_tokens=5,
+            )
+        except Exception as e:
+            error_msg = str(e)
+            if "401" in error_msg or "Unauthorized" in error_msg or "Invalid" in error_msg:
+                return jsonify({"error": "Invalid API token. Please check your token and try again."}), 401
+            elif "404" in error_msg or "not found" in error_msg.lower():
+                return jsonify({"error": f"Model '{model}' not found or not accessible with this token."}), 404
+            else:
+                return jsonify({"error": f"Token validation failed: {error_msg}"}), 400
+
+        # Token is valid — store in session
+        session["hf_token"] = token
+        session["hf_model"] = model
+        logger.info("User session configured with HF token (model: %s)", model)
+
+        return jsonify({"status": "ok", "model": model})
+
+    except Exception as e:
+        logger.exception("Error in /api/setup")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    """Clear the session token."""
+    session.pop("hf_token", None)
+    session.pop("hf_model", None)
+    return jsonify({"status": "logged_out"})
+
+
+# ---------------------------------------------------------------------------
+# App Routes (all require a valid session token)
+# ---------------------------------------------------------------------------
 @app.route("/ask", methods=["POST"])
+@require_token
 def ask_question():
-    """Query the RAG pipeline.
+    """Query the RAG pipeline using the session's HF token.
 
     Request:  { "question": "..." }
     Response: { "answer": "...", "sources": [...], "backend": "...", "stats": {...} }
@@ -77,7 +166,11 @@ def ask_question():
             return jsonify({"error": "Please provide a question."}), 400
 
         question = data["question"].strip()
-        result = rag_agent.query(question)
+        hf_token = session["hf_token"]
+        hf_model = session.get("hf_model")
+
+        # Use per-token query method
+        result = rag_agent.query_with_token(question, hf_token, model_name=hf_model)
         return jsonify(result)
 
     except Exception as e:
@@ -86,6 +179,7 @@ def ask_question():
 
 
 @app.route("/upload", methods=["POST"])
+@require_token
 def upload_file():
     """Upload and ingest a document into the knowledge base.
 
@@ -120,6 +214,7 @@ def upload_file():
 
 
 @app.route("/documents", methods=["GET"])
+@require_token
 def list_documents():
     """List all ingested documents with their chunk counts.
 
@@ -155,6 +250,7 @@ def list_documents():
 
 
 @app.route("/documents/<name>", methods=["DELETE"])
+@require_token
 def delete_document(name):
     """Remove all chunks for a specific document from the knowledge base.
 
@@ -169,6 +265,7 @@ def delete_document(name):
 
 
 @app.route("/clear", methods=["POST"])
+@require_token
 def clear_memory():
     """Clear conversation memory.
 
@@ -185,7 +282,12 @@ def get_stats():
     Response: { "total_chunks": N, "total_documents": N, "backend": "...", ... }
     """
     try:
-        return jsonify(rag_agent.get_stats())
+        stats = rag_agent.get_stats()
+        # Override backend info based on session
+        if session.get("hf_token"):
+            stats["backend"] = "huggingface_api"
+            stats["model"] = session.get("hf_model", stats["model"])
+        return jsonify(stats)
     except Exception as e:
         logger.exception("Error in /stats")
         return jsonify({"error": str(e)}), 500
@@ -209,7 +311,7 @@ if __name__ == "__main__":
     os.makedirs("static", exist_ok=True)
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-    print("\n>> Starting RAG Agent server...")
+    print("\n>> Starting RAG Agent server (multi-user hosted mode)...")
     print("   Open: http://localhost:5000")
     print("   Health: http://localhost:5000/health\n")
 

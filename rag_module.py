@@ -134,6 +134,34 @@ class RAGAgent:
             logger.error("HF API generation failed: %s", e)
             return f"[Error generating response: {e}]"
 
+    def generate_with_token(
+        self,
+        messages: list[dict],
+        hf_token: str,
+        model_name: str | None = None,
+        max_tokens: int = 512,
+    ) -> str:
+        """Generate text using a per-request HF token (for hosted/multi-user mode).
+
+        Creates a temporary InferenceClient so the shared RAGAgent can serve
+        any user's token without storing it.
+        """
+        from huggingface_hub import InferenceClient
+
+        model = model_name or self.model_name
+        try:
+            client = InferenceClient(model=model, token=hf_token)
+            response = client.chat_completion(
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=0.7,
+                top_p=0.9,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error("HF API generation (per-token) failed: %s", e)
+            return f"[Error generating response: {e}]"
+
     # ------------------------------------------------------------------
     # Document Loading
     # ------------------------------------------------------------------
@@ -434,6 +462,62 @@ class RAGAgent:
             "answer": answer,
             "sources": sources,
             "backend": self.backend,
+            "stats": {
+                "retrieved": len(retrieved),
+                "reranked": len(top_docs),
+                "collection_size": self.collection.count(),
+            },
+        }
+
+    def query_with_token(
+        self,
+        question: str,
+        hf_token: str,
+        model_name: str | None = None,
+        k_retrieve: int = 8,
+        k_rerank: int = 3,
+    ) -> dict:
+        """Run the full RAG pipeline using a per-request HF token.
+
+        Same as query() but uses generate_with_token() for the LLM call.
+        Suitable for hosted/multi-user deployments.
+
+        Returns:
+            dict with keys: answer, sources, backend, stats
+        """
+        # 1. Hybrid search
+        retrieved = self._hybrid_search(question, k=k_retrieve)
+
+        # 2. Rerank
+        top_docs = self._rerank(question, retrieved, k=k_rerank)
+
+        # 3. Build prompt with context + memory
+        context = "\n\n".join(
+            f"[Source: {doc['metadata'].get('source', 'unknown')}] {doc['text']}"
+            for doc in top_docs
+        )
+        messages = self._build_chat_messages(question, context)
+
+        # 4. Generate with per-request token
+        answer = self.generate_with_token(messages, hf_token, model_name)
+
+        # 5. Store in memory
+        self.conversation_memory.append({"question": question, "answer": answer})
+
+        # 6. Build source info
+        sources = [
+            {
+                "text": doc["text"][:200] + ("..." if len(doc["text"]) > 200 else ""),
+                "source": doc["metadata"].get("source", "unknown"),
+                "score": round(doc.get("rerank_score", doc.get("hybrid_score", 0)), 3),
+            }
+            for doc in top_docs
+        ]
+
+        return {
+            "answer": answer,
+            "sources": sources,
+            "backend": "huggingface_api",
             "stats": {
                 "retrieved": len(retrieved),
                 "reranked": len(top_docs),

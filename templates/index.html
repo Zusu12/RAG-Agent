@@ -36,6 +36,265 @@
             overflow: hidden;
         }
 
+        /* ================================================================
+           SETUP OVERLAY — Token Entry Screen
+           ================================================================ */
+        .setup-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: var(--bg-parchment);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        .setup-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1.02);
+        }
+
+        .setup-card {
+            width: 100%;
+            max-width: 520px;
+            padding: 48px 40px;
+            border: 1.5px solid var(--border-steel);
+            background: var(--bg-parchment);
+            position: relative;
+        }
+
+        /* Decorative corner marks */
+        .setup-card::before,
+        .setup-card::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-color: var(--accent-stamp);
+            border-style: solid;
+        }
+        .setup-card::before {
+            top: -1px;
+            left: -1px;
+            border-width: 3px 0 0 3px;
+        }
+        .setup-card::after {
+            bottom: -1px;
+            right: -1px;
+            border-width: 0 3px 3px 0;
+        }
+
+        .setup-stamp {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent-stamp);
+            border: 1px solid var(--accent-stamp);
+            padding: 4px 10px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .setup-title {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--text-ink);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .setup-subtitle {
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .setup-subtitle a {
+            color: var(--accent-stamp);
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .setup-subtitle a:hover {
+            border-bottom-color: var(--accent-stamp);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-ink);
+            margin-bottom: 8px;
+        }
+
+        .token-input-wrapper {
+            position: relative;
+            display: flex;
+        }
+
+        .token-input {
+            flex: 1;
+            padding: 12px 44px 12px 16px;
+            background: var(--bg-cardboard-light);
+            border: 1.5px solid var(--border-steel);
+            color: var(--text-ink);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .token-input::placeholder {
+            color: var(--border-steel-light);
+        }
+
+        .token-input:focus {
+            border-color: var(--accent-stamp);
+        }
+
+        .token-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text-muted);
+            padding: 4px;
+            transition: color 0.2s;
+        }
+
+        .token-toggle:hover {
+            color: var(--text-ink);
+        }
+
+        .model-select {
+            width: 100%;
+            padding: 10px 16px;
+            background: var(--bg-cardboard-light);
+            border: 1.5px solid var(--border-steel);
+            color: var(--text-ink);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234B5340' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        .model-select:focus {
+            border-color: var(--accent-stamp);
+        }
+
+        .connect-btn {
+            width: 100%;
+            padding: 14px 24px;
+            background: var(--text-ink);
+            color: var(--bg-parchment);
+            border: 1.5px solid var(--border-steel);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            margin-top: 8px;
+        }
+
+        .connect-btn:hover:not(:disabled) {
+            background: var(--accent-stamp);
+            color: white;
+            border-color: var(--accent-stamp);
+        }
+
+        .connect-btn:disabled {
+            background: var(--bg-cardboard);
+            color: var(--text-muted);
+            border-color: var(--border-steel-light);
+            cursor: not-allowed;
+        }
+
+        .connect-btn.loading {
+            position: relative;
+            color: transparent;
+        }
+
+        .connect-btn.loading::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 18px;
+            height: 18px;
+            margin: -9px 0 0 -9px;
+            border: 2px solid var(--border-steel-light);
+            border-top-color: var(--bg-parchment);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .setup-error {
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: none;
+            border: 1.5px solid var(--accent-stamp);
+            color: var(--accent-stamp);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            display: none;
+        }
+
+        .setup-error.visible {
+            display: block;
+        }
+
+        .setup-footer {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-steel-light);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        .setup-footer code {
+            background: var(--bg-cardboard);
+            padding: 1px 5px;
+            border: 1px solid var(--border-steel-light);
+            font-size: 0.65rem;
+        }
+
+        /* ================================================================
+           MAIN APP LAYOUT (unchanged from original, kept intact)
+           ================================================================ */
+
         /* ---- Layout ---- */
         .app-layout {
             display: grid;
@@ -96,6 +355,26 @@
             width: 6px;
             height: 6px;
             background: var(--accent-stamp);
+        }
+
+        /* Disconnect button */
+        .disconnect-btn {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background: none;
+            border: 1px solid var(--border-steel-light);
+            color: var(--text-muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            width: 100%;
+        }
+
+        .disconnect-btn:hover {
+            color: var(--accent-stamp);
+            border-color: var(--accent-stamp);
         }
 
         /* -- Upload zone -- */
@@ -752,11 +1031,65 @@
             .input-area {
                 padding: 16px;
             }
+
+            .setup-card {
+                margin: 16px;
+                padding: 32px 24px;
+            }
         }
     </style>
 </head>
 
 <body>
+
+    <!-- ================================================================
+         SETUP OVERLAY — Token Entry
+         ================================================================ -->
+    <div class="setup-overlay" id="setup-overlay">
+        <div class="setup-card">
+            <div class="setup-stamp">Authentication Required</div>
+            <div class="setup-title">RAG Agent</div>
+            <div class="setup-subtitle">
+                Enter your HuggingFace API token to begin. You can get a free
+                <code>Read</code> token at
+                <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">
+                    huggingface.co/settings/tokens</a>.
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="setup-token">API Token</label>
+                <div class="token-input-wrapper">
+                    <input type="password" class="token-input" id="setup-token"
+                        placeholder="hf_xxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+                    <button class="token-toggle" id="token-toggle" type="button" title="Show / Hide token">👁</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="setup-model">Model</label>
+                <select class="model-select" id="setup-model">
+                    <option value="Qwen/Qwen2.5-7B-Instruct" selected>Qwen 2.5 7B Instruct (recommended)</option>
+                    <option value="mistralai/Mistral-7B-Instruct-v0.3">Mistral 7B Instruct v0.3</option>
+                    <option value="HuggingFaceH4/zephyr-7b-beta">Zephyr 7B Beta</option>
+                    <option value="meta-llama/Llama-3.1-8B-Instruct">Llama 3.1 8B Instruct</option>
+                </select>
+            </div>
+
+            <button class="connect-btn" id="connect-btn">Connect</button>
+
+            <div class="setup-error" id="setup-error"></div>
+
+            <div class="setup-footer">
+                Your token is stored in your browser session only —
+                it is <strong>never saved on disk</strong> or shared.
+                <br>Supports <code>Read</code> access tokens.
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         MAIN APP
+         ================================================================ -->
     <div class="app-layout">
         <!-- Document Accession Ledger -->
         <aside class="sidebar">
@@ -769,6 +1102,9 @@
                     <span class="dot"></span>
                     <span id="backend-text">Loading Ledger...</span>
                 </div>
+                <button class="disconnect-btn" id="btn-disconnect" title="Clear token and return to setup">
+                    ✕ Disconnect
+                </button>
             </div>
 
             <!-- Upload Zone -->
@@ -851,24 +1187,148 @@
 
     <script>
         (() => {
-            // ---- DOM refs ----
-            const chatMessages = document.getElementById('chat-messages');
+            // ================================================================
+            // DOM refs
+            // ================================================================
+            const setupOverlay  = document.getElementById('setup-overlay');
+            const setupToken    = document.getElementById('setup-token');
+            const setupModel    = document.getElementById('setup-model');
+            const connectBtn    = document.getElementById('connect-btn');
+            const setupError    = document.getElementById('setup-error');
+            const tokenToggle   = document.getElementById('token-toggle');
+
+            const chatMessages  = document.getElementById('chat-messages');
             const questionInput = document.getElementById('question-input');
-            const sendBtn = document.getElementById('send-btn');
-            const emptyState = document.getElementById('empty-state');
-            const uploadZone = document.getElementById('upload-zone');
-            const fileInput = document.getElementById('file-input');
+            const sendBtn       = document.getElementById('send-btn');
+            const emptyState    = document.getElementById('empty-state');
+            const uploadZone    = document.getElementById('upload-zone');
+            const fileInput     = document.getElementById('file-input');
             const uploadProgress = document.getElementById('upload-progress');
-            const docList = document.getElementById('doc-list');
-            const statChunks = document.getElementById('stat-chunks');
-            const statDocs = document.getElementById('stat-docs');
-            const backendText = document.getElementById('backend-text');
-            const btnClear = document.getElementById('btn-clear');
+            const docList       = document.getElementById('doc-list');
+            const statChunks    = document.getElementById('stat-chunks');
+            const statDocs      = document.getElementById('stat-docs');
+            const backendText   = document.getElementById('backend-text');
+            const btnClear      = document.getElementById('btn-clear');
+            const btnDisconnect = document.getElementById('btn-disconnect');
             const toastContainer = document.getElementById('toast-container');
 
             let isProcessing = false;
 
-            // ---- Toast ----
+            // ================================================================
+            // SETUP / AUTH FLOW
+            // ================================================================
+
+            /** Check if user already has a valid session */
+            async function checkSession() {
+                try {
+                    const res = await fetch('/api/session-status');
+                    const data = await res.json();
+                    if (data.authenticated) {
+                        showApp();
+                    } else {
+                        showSetup();
+                    }
+                } catch (e) {
+                    showSetup();
+                }
+            }
+
+            function showSetup() {
+                setupOverlay.classList.remove('hidden');
+                setupToken.focus();
+            }
+
+            function showApp() {
+                setupOverlay.classList.add('hidden');
+                questionInput.focus();
+                refreshStats();
+                refreshDocuments();
+            }
+
+            /** Toggle token visibility */
+            tokenToggle.addEventListener('click', () => {
+                const isPassword = setupToken.type === 'password';
+                setupToken.type = isPassword ? 'text' : 'password';
+                tokenToggle.textContent = isPassword ? '🙈' : '👁';
+            });
+
+            /** Submit token */
+            connectBtn.addEventListener('click', submitToken);
+            setupToken.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') submitToken();
+            });
+
+            async function submitToken() {
+                const token = setupToken.value.trim();
+                if (!token) {
+                    showSetupError('Please enter your HuggingFace API token.');
+                    return;
+                }
+
+                // Basic format check
+                if (!token.startsWith('hf_')) {
+                    showSetupError('Token should start with "hf_". Please check your token.');
+                    return;
+                }
+
+                connectBtn.disabled = true;
+                connectBtn.classList.add('loading');
+                hideSetupError();
+
+                try {
+                    const res = await fetch('/api/setup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            token: token,
+                            model: setupModel.value,
+                        }),
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok && data.status === 'ok') {
+                        showToast(`Connected · Model: ${data.model}`, 'success');
+                        showApp();
+                    } else {
+                        showSetupError(data.error || 'Failed to validate token.');
+                    }
+                } catch (e) {
+                    showSetupError('Connection error: ' + e.message);
+                } finally {
+                    connectBtn.disabled = false;
+                    connectBtn.classList.remove('loading');
+                }
+            }
+
+            function showSetupError(msg) {
+                setupError.textContent = msg;
+                setupError.classList.add('visible');
+            }
+
+            function hideSetupError() {
+                setupError.textContent = '';
+                setupError.classList.remove('visible');
+            }
+
+            /** Disconnect / logout */
+            btnDisconnect.addEventListener('click', async () => {
+                if (!confirm('Disconnect and clear your API token from this session?')) return;
+                try {
+                    await fetch('/api/logout', { method: 'POST' });
+                    showToast('Disconnected', 'info');
+                    // Reset UI
+                    setupToken.value = '';
+                    hideSetupError();
+                    showSetup();
+                } catch (e) {
+                    showToast('Failed to disconnect', 'error');
+                }
+            });
+
+            // ================================================================
+            // TOAST
+            // ================================================================
             function showToast(message, type = 'info') {
                 const toast = document.createElement('div');
                 toast.className = `toast ${type}`;
@@ -877,7 +1337,9 @@
                 setTimeout(() => toast.remove(), 3500);
             }
 
-            // ---- Stats & Documents ----
+            // ================================================================
+            // STATS & DOCUMENTS
+            // ================================================================
             async function refreshStats() {
                 try {
                     const res = await fetch('/stats');
@@ -899,6 +1361,7 @@
             async function refreshDocuments() {
                 try {
                     const res = await fetch('/documents');
+                    if (res.status === 401) return; // Not authenticated yet
                     const data = await res.json();
 
                     if (!data.documents || data.documents.length === 0) {
@@ -946,7 +1409,9 @@
                 }
             }
 
-            // ---- File Upload ----
+            // ================================================================
+            // FILE UPLOAD
+            // ================================================================
             uploadZone.addEventListener('click', () => fileInput.click());
 
             uploadZone.addEventListener('dragover', (e) => {
@@ -1006,7 +1471,9 @@
                 }
             }
 
-            // ---- Chat ----
+            // ================================================================
+            // CHAT
+            // ================================================================
             function hideEmptyState() {
                 if (emptyState) emptyState.style.display = 'none';
             }
@@ -1100,6 +1567,13 @@
 
                     hideTyping();
 
+                    // Handle 401 — token expired or missing
+                    if (res.status === 401) {
+                        addMessage('Your session has expired. Please reconnect with your API token.', 'assistant');
+                        showSetup();
+                        return;
+                    }
+
                     const contentType = res.headers.get('content-type');
                     let data;
                     if (contentType && contentType.includes('application/json')) {
@@ -1125,7 +1599,9 @@
                 }
             }
 
-            // ---- Event Listeners ----
+            // ================================================================
+            // EVENT LISTENERS
+            // ================================================================
             sendBtn.addEventListener('click', sendQuestion);
 
             questionInput.addEventListener('keydown', (e) => {
@@ -1158,10 +1634,10 @@
                 }
             });
 
-            // ---- Init ----
-            questionInput.focus();
-            refreshStats();
-            refreshDocuments();
+            // ================================================================
+            // INIT — check session on page load
+            // ================================================================
+            checkSession();
         })();
     </script>
 </body>
