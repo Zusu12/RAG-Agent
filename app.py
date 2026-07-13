@@ -311,8 +311,10 @@ if __name__ == "__main__":
     os.makedirs("static", exist_ok=True)
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-    print("\n>> Starting RAG Agent server (multi-user hosted mode)...")
-    print("   Open: http://localhost:5000")
-    print("   Health: http://localhost:5000/health\n")
+    port = int(os.getenv("PORT", 7860))
 
-    app.run(debug=False, host="0.0.0.0", port=5000)
+    print("\n>> Starting RAG Agent server (multi-user hosted mode)...")
+    print(f"   Open: http://localhost:{port}")
+    print(f"   Health: http://localhost:{port}/health\n")
+
+    app.run(debug=False, host="0.0.0.0", port=port)
