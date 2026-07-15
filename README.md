@@ -75,7 +75,7 @@ RAGAgent-GitHub/
 
 ### 1. Prerequisites
 - **Python 3.10 or higher**
-- A Hugging Face account (to generate a free API token for high-quality text generation).
+- A Hugging Face account (*to generate a free API token for high-quality text generation).
 
 ### 2. Installation
 Clone or copy this repository to your local machine, navigate to the folder, and install the required Python packages:
